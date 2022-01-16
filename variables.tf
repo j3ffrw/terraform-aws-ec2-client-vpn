@@ -62,6 +62,31 @@ variable "saml_provider_arn" {
   }
 }
 
+variable "self_service_saml_metadata_document" {
+  default     = null
+  description = "Optional SAML metadata document. Must include this or `self_service_saml_provider_arn`"
+  type        = string
+}
+
+variable "self_service_saml_provider_arn" {
+  default     = null
+  description = "Optional SAML provider ARN. Must include this or `self_service_saml_metadata_document`"
+  type        = string
+
+  validation {
+    error_message = "Invalid SAML provider ARN."
+
+    condition = (
+      var.self_service_saml_provider_arn == null ||
+      try(length(regexall(
+        "^arn:[^:]+:iam::(?P<account_id>\\d{12}):saml-provider\\/(?P<provider_name>[\\w+=,\\.@-]+)$",
+        var.self_service_saml_provider_arn
+        )) > 0,
+        false
+    ))
+  }
+}
+
 variable "additional_routes" {
   default     = []
   description = "A list of additional routes that should be attached to the Client VPN endpoint"
@@ -79,10 +104,17 @@ variable "associated_subnets" {
 }
 
 variable "authorization_rules" {
+  default =  [
+    {
+      access_group_id       = null
+      authorize_all_groups  = null
+      description           = null
+      target_network_cidr   = null
+    }
+  ]
   type = list(object({
-    name                 = string
     access_group_id      = string
-    authorize_all_groups = bool
+    authorize_all_groups = bool 
     description          = string
     target_network_cidr  = string
   }))
@@ -146,4 +178,10 @@ variable "split_tunnel" {
   default     = false
   type        = bool
   description = "Indicates whether split-tunnel is enabled on VPN endpoint. Default value is false."
+}
+
+variable "self_service_portal" {
+  default     = "disabled"
+  type        = string
+  description = "Specify whether to enable the self-service portal for the Client VPN endpoint. Default value is disabled"
 }
